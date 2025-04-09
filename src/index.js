@@ -82,7 +82,7 @@ const RBSheet = forwardRef((props, ref) => {
   // Function to handle the visibility of the modal
   const handleSetVisible = visible => {
     if (visible) {
-      // panY.setValue(0); // reset drag first
+      panY.setValue(0); // reset drag first
       translateY.setValue(height); // start hidden
       setModalVisible(true);
       if (typeof onOpen === 'function') {
@@ -101,7 +101,7 @@ const RBSheet = forwardRef((props, ref) => {
         duration: closeDuration,
       }).start(() => {
         translateY.setValue(height); // reset for next open
-        // panY.setValue(0); // reset drag too
+        panY.setValue(0); // reset drag too
         setModalVisible(false);
         if (typeof onClose === 'function') {
           onClose();
