@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   View,
+  StyleSheet,
 } from 'react-native';
 import styles from './style';
 
@@ -35,8 +36,8 @@ const RBSheet = forwardRef((props, ref) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   // Using useRef hook to reference animated values
-  const animatedHeight = useRef(new Animated.Value(0)).current;
-  const pan = useRef(new Animated.ValueXY()).current;
+  const translateY = useRef(new Animated.Value(height)).current;
+  const panY = useRef(new Animated.Value(0)).current;
 
   // Exposing component methods to parent via useImperativeHandle hook
   useImperativeHandle(ref, () => ({
@@ -56,11 +57,7 @@ const RBSheet = forwardRef((props, ref) => {
 
       // Update pan.y value on vertical move if gestureState.dy is positive
       onPanResponderMove: (e, gestureState) => {
-        gestureState.dy > 0 &&
-          Animated.event([null, {dy: pan.y}], {useNativeDriver})(
-            e,
-            gestureState,
-          );
+        gestureState.dy > 0 && panY.setValue(gestureState.dy);
       },
 
       // Handle when the user has released the touche
@@ -70,8 +67,8 @@ const RBSheet = forwardRef((props, ref) => {
           handleSetVisible(false);
         } else {
           // Reset pan to original position on release
-          Animated.spring(pan, {
-            toValue: {x: 0, y: 0},
+          Animated.spring(panY, {
+            toValue: 0,
             useNativeDriver,
           }).start();
         }
@@ -85,28 +82,27 @@ const RBSheet = forwardRef((props, ref) => {
   // Function to handle the visibility of the modal
   const handleSetVisible = visible => {
     if (visible) {
-      setModalVisible(visible);
-      // Call onOpen callback if provided
+      // panY.setValue(0); // reset drag first
+      translateY.setValue(height); // start hidden
+      setModalVisible(true);
       if (typeof onOpen === 'function') {
         onOpen();
       }
-      // Animate height on open
-      Animated.timing(animatedHeight, {
-        useNativeDriver,
-        toValue: height,
+
+      Animated.timing(translateY, {
+        useNativeDriver: true,
+        toValue: 0,
         duration: openDuration,
       }).start();
     } else {
-      // Animate height on close
-      Animated.timing(animatedHeight, {
-        useNativeDriver,
-        toValue: 0,
+      Animated.timing(translateY, {
+        useNativeDriver: true,
+        toValue: height,
         duration: closeDuration,
       }).start(() => {
-        setModalVisible(visible);
-        // Reset pan value
-        pan.setValue({x: 0, y: 0});
-        // Call onClose callback if provided
+        translateY.setValue(height); // reset for next open
+        // panY.setValue(0); // reset drag too
+        setModalVisible(false);
         if (typeof onClose === 'function') {
           onClose();
         }
@@ -138,8 +134,12 @@ const RBSheet = forwardRef((props, ref) => {
           {...(dragOnContent && panResponder.panHandlers)} // Attach pan handlers to content if dragOnContent is true
           style={[
             styles.container,
-            {transform: pan.getTranslateTransform()},
-            {height: animatedHeight},
+            {transform: [{translateY: translateY}, {translateY: panY}], height},
+            // {
+            //   transform: [
+            //     {translateY: Animated.subtract(translateY, panY)}, // Combine open animation and drag gesture
+            //   ],
+            // },
             customStyles.container,
           ]}>
           {draggable && ( // Show draggable icon if set it to true
